@@ -119,7 +119,7 @@ export class ErinTreeRepository<E> extends Repository<E> {
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node = this.getNode(entity);
+        let node = await this.getNode(entity);
         if (node == undefined) {
           throw new Error("One or Many entities does not have record in Tree");
         }
@@ -150,7 +150,7 @@ export class ErinTreeRepository<E> extends Repository<E> {
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node = this.getNode(entity);
+        let node = await this.getNode(entity);
         if (node == undefined) {
           throw new Error("One or Many entities does not have record in Tree");
         }
@@ -179,7 +179,7 @@ export class ErinTreeRepository<E> extends Repository<E> {
     let entities = await this.find(options);
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node = this.getNode(entity);
+        let node = await this.getNode(entity);
 
         if (node == undefined) {
           throw new Error("One or Many entities does not have record in Tree");
