@@ -176,6 +176,45 @@ export class ErinTreeRepository<E> extends Repository<E> {
     return entities;
   }
 
+  async findSiblings(options: FindManyOptions){
+    if (!this.isTree()) {
+      throw new Error('Model does not have tree property');
+    }
+    const modelOptions = this.getTreeModelOptions();
+
+    let entities = await this.find(options);
+    entities = await Promise.all(
+      entities.map(async (entity: any)=>{
+
+        let node: any = await this.getTreeModelRepository()
+          .createQueryBuilder()
+          .setFindOptions({
+            where: {
+              [modelOptions.idColumn]: entity.id,
+              [modelOptions.typeColumn]: entity.constructor.name,
+            },
+          })
+          .getOne();
+
+        if (node == undefined) {
+          throw new Error('One or Many entities does not have record in Tree');
+        }
+
+        let parents = await this.manager
+        .getTreeRepository(this.getTreeModel())
+        .findAncestorsTree(node);
+
+        let siblings = await this.manager.getTreeRepository(this.getTreeModel())
+          .findDescendantsTree(parents.parent)
+
+        entity.siblings = await this.getNodesData(siblings.child)
+        return entity;
+      })
+    )
+
+    return entities
+  }
+
   /**
    * Recursive function
    * @param nodes nodes with tree
@@ -190,7 +229,9 @@ export class ErinTreeRepository<E> extends Repository<E> {
       return Promise.all(
         nodes.map(async (node) => {
           let data = await this.getNodeData(node);
-          data[direction] = await this.getNodesData(node[direction], direction);
+          if(direction != undefined){
+            data[direction] = await this.getNodesData(node[direction], direction);
+          }
           return data;
         })
       );

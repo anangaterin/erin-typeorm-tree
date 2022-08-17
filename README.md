@@ -187,6 +187,47 @@ async get(data: GetBuildingDTO){
 ]
 ```
 
+### Find Siblings
+```typescript
+  async get(data: GetBuildingDTO){
+    let building =  await this.buildingRepository.findSiblings({where:{
+      id: data.id
+    }})
+    return building
+  }
+
+  // returns array
+  [
+    {
+        "type": "Building",
+        "id": "ddc016c8-ec5c-479b-9e48-4178c44bea00",
+        "name": "Building Schuppe",
+        "siblings": [
+            {
+                "type": "Building",
+                "id": "8e4611dc-3c0c-4954-a52f-7d586417709c",
+                "name": "Building Dietrich"
+            },
+            {
+                "type": "Amenity",
+                "id": "1f19e8a4-c5db-4416-8518-52afb9ac2195",
+                "name": "Willms Room"
+            },
+            {
+                "type": "Building",
+                "id": "658b602f-1bed-4fe5-8bf2-3b22c74b66a5",
+                "name": "Building Pacocha"
+            },
+            {
+                "type": "Building",
+                "id": "ddc016c8-ec5c-479b-9e48-4178c44bea00",
+                "name": "Building Schuppe"
+            }
+        ]
+    }
+]
+```
+
 ## What's next?
 This library is not completed yet. The most obvious thing is we still need to implement update and delete, like parent deleting child or child change parent.  
 ### TO DO : 
