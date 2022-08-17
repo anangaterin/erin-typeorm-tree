@@ -61,7 +61,8 @@ export class ErinTreeRepository<E> extends Repository<E> {
           parentKey.length > 0
             ? this.getPropertyFromTreeMetadataKey(parentKey[0])
             : undefined;
-        let parent: any = key === undefined ? undefined : entity[key as keyof typeof entity];
+        let parent: any =
+          key === undefined ? undefined : entity[key as keyof typeof entity];
 
         // store data
         let newData: any = await super.save(entity, options);
@@ -97,6 +98,11 @@ export class ErinTreeRepository<E> extends Repository<E> {
     return this.getMetadataKey();
   }
 
+  /**
+   * get all roots object
+   * @param options 
+   * @returns 
+   */
   async findRoot(options: FindTreeOptions) {
     let data = await this.manager
       .getTreeRepository(this.getTreeModel())
@@ -108,22 +114,12 @@ export class ErinTreeRepository<E> extends Repository<E> {
     if (!this.isTree()) {
       throw new Error("Model does not have tree property");
     }
-    const modelOptions = this.getTreeModelOptions();
 
     let entities = await this.find(options);
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node: any = await this.getTreeModelRepository()
-          .createQueryBuilder()
-          .setFindOptions({
-            where: {
-              [modelOptions.idColumn]: entity.id,
-              [modelOptions.typeColumn]: entity.constructor.name,
-            },
-          })
-          .getOne();
-
+        let node = this.getNode(entity);
         if (node == undefined) {
           throw new Error("One or Many entities does not have record in Tree");
         }
@@ -141,29 +137,23 @@ export class ErinTreeRepository<E> extends Repository<E> {
     return entities;
   }
 
+  /**
+   * Get children of an entity
+   * @param options 
+   * @returns 
+   */
   async findChildren(options?: FindManyOptions<E>): Promise<E[]> {
     if (!this.isTree()) {
       throw new Error("Model does not have tree property");
     }
-    const modelOptions = this.getTreeModelOptions();
-
     let entities = await this.find(options);
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node: any = await this.getTreeModelRepository()
-          .createQueryBuilder()
-          .setFindOptions({
-            where: {
-              [modelOptions.idColumn]: entity.id,
-              [modelOptions.typeColumn]: entity.constructor.name,
-            },
-          }).getOne();
-
+        let node = this.getNode(entity);
         if (node == undefined) {
           throw new Error("One or Many entities does not have record in Tree");
         }
-
         let children = await this.manager
           .getTreeRepository(this.getTreeModel())
           .findDescendantsTree(node);
@@ -176,47 +166,43 @@ export class ErinTreeRepository<E> extends Repository<E> {
     return entities;
   }
 
-  async findSiblings(options: FindManyOptions){
+  /**
+   * Find sibling from an entity or entities
+   * @param options 
+   * @returns 
+   */
+  async findSiblings(options: FindManyOptions) {
     if (!this.isTree()) {
-      throw new Error('Model does not have tree property');
+      throw new Error("Model does not have tree property");
     }
-    const modelOptions = this.getTreeModelOptions();
 
     let entities = await this.find(options);
     entities = await Promise.all(
-      entities.map(async (entity: any)=>{
-
-        let node: any = await this.getTreeModelRepository()
-          .createQueryBuilder()
-          .setFindOptions({
-            where: {
-              [modelOptions.idColumn]: entity.id,
-              [modelOptions.typeColumn]: entity.constructor.name,
-            },
-          })
-          .getOne();
+      entities.map(async (entity: any) => {
+        let node = this.getNode(entity);
 
         if (node == undefined) {
-          throw new Error('One or Many entities does not have record in Tree');
+          throw new Error("One or Many entities does not have record in Tree");
         }
 
         let parents = await this.manager
-        .getTreeRepository(this.getTreeModel())
-        .findAncestorsTree(node);
+          .getTreeRepository(this.getTreeModel())
+          .findAncestorsTree(node);
 
-        let siblings = await this.manager.getTreeRepository(this.getTreeModel())
-          .findDescendantsTree(parents.parent)
+        let siblings = await this.manager
+          .getTreeRepository(this.getTreeModel())
+          .findDescendantsTree(parents.parent);
 
-        entity.siblings = await this.getNodesData(siblings.child)
+        entity.siblings = await this.getNodesData(siblings.child);
         return entity;
       })
-    )
+    );
 
-    return entities
+    return entities;
   }
 
   /**
-   * Recursive function
+   * Recursive function to get all nodes data
    * @param nodes nodes with tree
    * @param direction what would you want to find? parent? child?
    * @returns ObjectLiteral
@@ -229,8 +215,11 @@ export class ErinTreeRepository<E> extends Repository<E> {
       return Promise.all(
         nodes.map(async (node) => {
           let data = await this.getNodeData(node);
-          if(direction != undefined){
-            data[direction] = await this.getNodesData(node[direction], direction);
+          if (direction != undefined) {
+            data[direction] = await this.getNodesData(
+              node[direction],
+              direction
+            );
           }
           return data;
         })
@@ -245,6 +234,11 @@ export class ErinTreeRepository<E> extends Repository<E> {
     }
   }
 
+  /**
+   * Actually get data of a node
+   * @param node 
+   * @returns 
+   */
   private async getNodeData(node: ObjectLiteral) {
     const modelOptions = this.getTreeModelOptions();
     return this.manager.getRepository(node.node_type).findOneBy({
@@ -272,6 +266,24 @@ export class ErinTreeRepository<E> extends Repository<E> {
         return false;
       }
     });
+  }
+
+  /**
+   * Get node data of an entity from tree
+   * @param entity 
+   * @returns 
+   */
+  private async getNode(entity: any) {
+    const modelOptions = this.getTreeModelOptions();
+    return await this.getTreeModelRepository()
+      .createQueryBuilder()
+      .setFindOptions({
+        where: {
+          [modelOptions.idColumn]: entity.id,
+          [modelOptions.typeColumn]: entity.constructor.name,
+        },
+      })
+      .getOne();
   }
 
   private getPropertyFromTreeMetadataKey(key: String) {
