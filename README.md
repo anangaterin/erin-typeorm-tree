@@ -18,6 +18,8 @@ This example are for [Nest.js](https://nestjs.com/)
 ### Setup
 Create a table that use [TypeORM](https://typeorm.io/tree-entities)'s materialized-path  
 ```typescript
+import { Column, Entity, PrimaryGeneratedColumn, Tree as Type, TreeChildren, TreeParent } from "typeorm";
+
 @Entity()
 @Type('materialized-path')
 export class Tree{
@@ -47,6 +49,10 @@ Create your model and add class decorator `@ErinTree()` with parameters of a fun
 
   Parent and Childern property are not required. For example your root may only use Childern and your leaf may only require Parent. If you don't know or not sure, it is better to have both.
 ```typescript
+import { Children, ErinTree, Parent } from "erin-typeorm-tree";
+import { Column, Entity, PrimaryGeneratedColumn} from "typeorm";
+import { Tree } from "./tree.entity";
+
 @Entity()
 @ErinTree(()=> Tree, {
     typeColumn: 'node_type' // default, or change it to your column that stores the data Type
