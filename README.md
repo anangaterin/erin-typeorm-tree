@@ -10,7 +10,9 @@ This library is used to create a tree with different data type as shown below
 ```
 
 ## How it work?
-This library will require a table that store the node data. This table will implement [TypeORM](https://typeorm.io/tree-entities)'s materialized-path tree. Each node will have node_type and node_id properties that will search specific record in corresponding table using the node_id and node_type.
+This library will require a table that store the node data. This table will implement [TypeORM](https://typeorm.io/tree-entities)'s materialized-path tree. Each node will have node_type and node_id properties that will search specific record in corresponding table using the node_id and node_type.  
+
+**Be Carefull This Lib Is Expensive, Not Recommended For Handling A Lot Of Data And/Or Using Database Server That Billed Per Request As This Lib Did A LOT OF DATABASE REQUEST Until Further Update**
 
 ## How to use
 This example are for [Nest.js](https://nestjs.com/)  
