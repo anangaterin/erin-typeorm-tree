@@ -2,41 +2,51 @@ import {
   DeepPartial,
   FindManyOptions,
   FindTreeOptions,
+  ObjectLiteral,
   Repository,
   SaveOptions,
-} from 'typeorm';
-import { TREE_KEY, TREE_KEY_SEPARATOR } from '../constant/constant';
-import { Tree } from '../model/tree';
+} from "typeorm";
+import { TREE_KEY, TREE_KEY_SEPARATOR } from "../constant/constant";
+import { ITreeModelOptions } from "../interfaces/tree_interfaces";
 
-export class CustomTreeRepository<E> extends Repository<E> {
+export class ErinTreeRepository<E> extends Repository<E> {
   isTree() {
     return Reflect.getMetadata(
       TREE_KEY,
-      (this.metadata.target as Function)['prototype'],
+      (this.metadata.target as Function)["prototype"]
     );
   }
 
   save<T extends DeepPartial<E>>(
     entities: T[],
-    options: SaveOptions & { reload: false },
+    options: SaveOptions & { reload: false }
   ): Promise<T[]>;
   save<T extends DeepPartial<E>>(
     entities: T[],
-    options?: SaveOptions,
+    options?: SaveOptions
   ): Promise<(T & E)[]>;
   save<T extends DeepPartial<E>>(
     entity: T,
-    options: SaveOptions & { reload: false },
+    options: SaveOptions & { reload: false }
   ): Promise<T>;
   save<T extends DeepPartial<E>>(
     entity: T,
-    options?: SaveOptions,
+    options?: SaveOptions
   ): Promise<T & E>;
   async save<T extends DeepPartial<E>>(
     entity: T | Array<T>,
-    options?: SaveOptions,
+    options?: SaveOptions
   ): Promise<T[] | (T & E)[] | Promise<T> | Promise<T & E>> {
     if (!this.isTree()) {
+      return Array.isArray(entity)
+        ? super.save(entity, options)
+        : super.save(entity, options);
+    }
+    const modelOptions = this.getTreeModelOptions();
+
+    const id = entity.hasOwnProperty("id") ? entity : null;
+    // if already have id must be an "update" operation
+    if (id != null) {
       return Array.isArray(entity)
         ? super.save(entity, options)
         : super.save(entity, options);
@@ -51,33 +61,33 @@ export class CustomTreeRepository<E> extends Repository<E> {
           parentKey.length > 0
             ? this.getPropertyFromTreeMetadataKey(parentKey[0])
             : undefined;
-
-        let parent:any = key === undefined ? undefined : entity[key as keyof typeof entity];
+        let parent: any = key === undefined ? undefined : entity[key as keyof typeof entity];
 
         // store data
         let newData: any = await super.save(entity, options);
         // create node in tree based on data
-        let node = new Tree();
-        node.node_id = newData.id;
-        node.node_type = newData.constructor.name;
+        const Table = this.getTreeModel();
+        let node = new Table();
+        node[modelOptions.idColumn] = newData.id;
+        node[modelOptions.typeColumn] = newData.constructor.name;
 
         // assign parent
         if (parent != undefined) {
           // get parent id
-          let ownParent = await this.manager.getRepository(Tree).findOneBy({
-            node_id: parent.id,
-            node_type: parent.constructor.name,
+          let ownParent = await this.getTreeModelRepository().findOneBy({
+            [modelOptions.idColumn]: parent.id,
+            [modelOptions.typeColumn]: parent.constructor.name,
           });
           // error if parent is not existed
           if (ownParent == undefined) {
-            throw new Error('Parent not registered');
+            throw new Error("Parent not registered");
           }
           node.parent = ownParent;
         }
 
         await this.manager.save(node);
         return newData;
-      }),
+      })
     );
 
     return data;
@@ -87,41 +97,45 @@ export class CustomTreeRepository<E> extends Repository<E> {
     return this.getMetadataKey();
   }
 
-  async findRoot(options:FindTreeOptions){
-    let data = await this.manager.getTreeRepository(Tree).findRoots(options)
+  async findRoot(options: FindTreeOptions) {
+    let data = await this.manager
+      .getTreeRepository(this.getTreeModel())
+      .findRoots(options);
     return this.getNodesData(data);
   }
 
   async findParent(options?: FindManyOptions<E>): Promise<E[]> {
     if (!this.isTree()) {
-      throw new Error('Model does not have tree property');
+      throw new Error("Model does not have tree property");
     }
+    const modelOptions = this.getTreeModelOptions();
 
     let entities = await this.find(options);
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node: any = await this.manager
-          .getRepository(Tree)
+        let node: any = await this.getTreeModelRepository()
           .createQueryBuilder()
-          .where('node_id=:node_id AND node_type=:node_type', {
-            node_id: entity.id,
-            node_type: entity.constructor.name,
+          .setFindOptions({
+            where: {
+              [modelOptions.idColumn]: entity.id,
+              [modelOptions.typeColumn]: entity.constructor.name,
+            },
           })
           .getOne();
 
         if (node == undefined) {
-          throw new Error('One or Many entities does not have record in Tree');
+          throw new Error("One or Many entities does not have record in Tree");
         }
 
         let parent = await this.manager
-          .getTreeRepository(Tree)
+          .getTreeRepository(this.getTreeModel())
           .findAncestorsTree(node);
 
-        entity.parent = await this.getNodesData(parent.parent, 'parent');
+        entity.parent = await this.getNodesData(parent.parent, "parent");
 
         return entity;
-      }),
+      })
     );
 
     return entities;
@@ -129,33 +143,34 @@ export class CustomTreeRepository<E> extends Repository<E> {
 
   async findChildren(options?: FindManyOptions<E>): Promise<E[]> {
     if (!this.isTree()) {
-      throw new Error('Model does not have tree property');
+      throw new Error("Model does not have tree property");
     }
+    const modelOptions = this.getTreeModelOptions();
 
     let entities = await this.find(options);
 
     entities = await Promise.all(
       entities.map(async (entity: any) => {
-        let node: any = await this.manager
-          .getRepository(Tree)
+        let node: any = await this.getTreeModelRepository()
           .createQueryBuilder()
-          .where('node_id=:node_id AND node_type=:node_type', {
-            node_id: entity.id,
-            node_type: entity.constructor.name,
-          })
-          .getOne();
+          .setFindOptions({
+            where: {
+              [modelOptions.idColumn]: entity.id,
+              [modelOptions.typeColumn]: entity.constructor.name,
+            },
+          }).getOne();
 
         if (node == undefined) {
-          throw new Error('One or Many entities does not have record in Tree');
+          throw new Error("One or Many entities does not have record in Tree");
         }
 
         let children = await this.manager
-          .getTreeRepository(Tree)
+          .getTreeRepository(this.getTreeModel())
           .findDescendantsTree(node);
-        entity.child = await this.getNodesData(children.child, 'child');
+        entity.child = await this.getNodesData(children.child, "child");
 
         return entity;
-      }),
+      })
     );
 
     return entities;
@@ -168,8 +183,8 @@ export class CustomTreeRepository<E> extends Repository<E> {
    * @returns ObjectLiteral
    */
   private async getNodesData(
-    nodes: Tree | Tree[],
-    direction: 'parent' | 'child' | null = null,
+    nodes: ObjectLiteral | ObjectLiteral[],
+    direction: "parent" | "child" | null = null
   ) {
     if (Array.isArray(nodes)) {
       return Promise.all(
@@ -177,7 +192,7 @@ export class CustomTreeRepository<E> extends Repository<E> {
           let data = await this.getNodeData(node);
           data[direction] = await this.getNodesData(node[direction], direction);
           return data;
-        }),
+        })
       );
     } else {
       if (nodes != undefined && nodes[direction] != undefined) {
@@ -189,25 +204,26 @@ export class CustomTreeRepository<E> extends Repository<E> {
     }
   }
 
-  private async getNodeData(node: Tree) {
+  private async getNodeData(node: ObjectLiteral) {
+    const modelOptions = this.getTreeModelOptions();
     return this.manager.getRepository(node.node_type).findOneBy({
-      id: node.node_id,
+      id: node[modelOptions.idColumn],
     });
   }
 
   private getMetadataKey() {
     return Reflect.getMetadataKeys(
-      (this.metadata.target as Function)['prototype'],
+      (this.metadata.target as Function)["prototype"]
     );
   }
 
   private findParentKey() {
-    let target = (this.metadata.target as Function)['prototype'];
+    let target = (this.metadata.target as Function)["prototype"];
     return Reflect.getMetadataKeys(target).filter((value) => {
       let metadatas = value.split(TREE_KEY_SEPARATOR);
       if (metadatas.length == 2) {
         let metadata = Reflect.getMetadata(value, target);
-        if (metadata.type == 'parent') {
+        if (metadata.type == "parent") {
           return true;
         }
         return false;
@@ -225,8 +241,26 @@ export class CustomTreeRepository<E> extends Repository<E> {
   private getTreeMetadata(key: string) {
     return Reflect.getMetadata(
       key,
-      (this.metadata.target as Function)['prototype'],
+      (this.metadata.target as Function)["prototype"]
     );
   }
 
+  private getTreeModelRepository() {
+    const target = this.metadata.target as Function;
+    let data = Reflect.getMetadata(`${TREE_KEY}::TABLE`, target) as Function;
+    return this.manager.getRepository(data());
+  }
+
+  private getTreeModel() {
+    const target = this.metadata.target as Function;
+    let data = Reflect.getMetadata(`${TREE_KEY}::TABLE`, target) as Function;
+    return data();
+  }
+
+  private getTreeModelOptions(): ITreeModelOptions {
+    const target = this.metadata.target as Function;
+    return Reflect.getMetadata(`${TREE_KEY}::OPTIONS`, target);
+  }
+
+  private insertToTree() {}
 }

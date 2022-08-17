@@ -1,1 +1,1 @@
-export {Parent, Children} from './decorator'
+export {Parent, Children, ErinTree} from './decorator'

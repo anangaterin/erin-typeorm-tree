@@ -1,1 +1,1 @@
-export {CustomTreeRepository} from './repository'
+export {ErinTreeRepository} from './repository'
