@@ -2,6 +2,10 @@ import { TREE_KEY, TREE_KEY_SEPARATOR } from "../constant/constant";
 import "reflect-metadata";
 import { ITreeModelOptions } from "../interfaces/tree_interfaces";
 
+/**
+ * Property decorator to be assigned to parent object from a model
+ * @returns 
+ */
 export const Parent = (): PropertyDecorator => (target, key: string) => {
   Reflect.defineMetadata(TREE_KEY, true, target);
   Reflect.defineMetadata(
@@ -14,6 +18,10 @@ export const Parent = (): PropertyDecorator => (target, key: string) => {
   );
 };
 
+/**
+ * Property decorator to be assigned to a child object from a model
+ * @returns 
+ */
 export const Children = (): PropertyDecorator => (target, key: string) => {
   Reflect.defineMetadata(TREE_KEY, true, target);
   Reflect.defineMetadata(
@@ -25,6 +33,13 @@ export const Children = (): PropertyDecorator => (target, key: string) => {
   );
 };
 
+
+/**
+ * Class decorator assigned to a model that will implement poly tree
+ * @param model A model that implement TypeORM's materialized-path tree
+ * @param options A tree model's column that stored entity type and id
+ * @returns 
+ */
 export const ErinTree =
   (
     model: Function,
