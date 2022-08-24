@@ -40,7 +40,7 @@ export const Children = (): PropertyDecorator => (target, key: string) => {
  * @param options A tree model's column that stored entity type and id
  * @returns 
  */
-export const ErinTree =
+export const PolyTree =
   (
     model: Function,
     options: ITreeModelOptions = {

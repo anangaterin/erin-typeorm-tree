@@ -1,1 +1,1 @@
-export {ErinTreeRepository} from './repository'
+export {PolyTreeRepository} from './repository'

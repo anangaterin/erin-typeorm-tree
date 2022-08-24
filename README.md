@@ -45,19 +45,19 @@ export class Tree{
 }
 ```
 
-Create your model and add class decorator `@ErinTree()` with parameters of a function that returns a class of your previusly created table. The second parameters was an object that have typeColumn and idColumn properties. It is optional you can leave them empty.  
+Create your model and add class decorator `@PolyTree()` with parameters of a function that returns a class of your previusly created table. The second parameters was an object that have typeColumn and idColumn properties. It is optional you can leave them empty.  
   
   Parent and Children property will have any type as it can be anything. Each will have property decorator of `@Parent()` and `@Children()` respectively. Remember to use `@Parent()` that imported from this lib beacuse TypeORM have similar decorator.  
 
   Parent and Childern property are not required. For example your root may only use Childern and your leaf may only require Parent. If you don't know or not sure, it is better to have both.
 ```typescript
-import { Children, ErinTree, Parent } from "erin-typeorm-tree";
+import { Children, PolyTree, Parent } from "erin-typeorm-tree";
 import { Column, Entity, PrimaryGeneratedColumn} from "typeorm";
 import { Tree } from "./tree.entity";
 
 @Entity()
-@ErinTree(()=> Tree, {
-    typeColumn: 'node_type' // default, or change it to your column that stores the data Type
+@PolyTree(()=> Tree, {
+    typeColumn: 'node_type', // default, or change it to your column that stores the data Type
     idColumn: 'node_id' // default, ot change it to your colum that stores the data Id
 })
 export class Building{
@@ -78,10 +78,10 @@ export class Building{
 }
 ```
 
-Create your repository that extends `ErinTreeRepository`
+Create your repository that extends `PolyTreeRepository`
 ```typescript
 @Injectable()
-export class BuildingRepository extends ErinTreeRepository<Building>{
+export class BuildingRepository extends PolyTreeRepository<Building>{
     constructor(private dataSource: DataSource)
     {
         super(Building, dataSource.createEntityManager());
